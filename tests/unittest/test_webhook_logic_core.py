@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import importlib
 
@@ -191,3 +192,46 @@ def test_gitlab_handle_ask_line_converts_new_line_diff_note_to_right_side_comman
         "/ask_line --line_start=10 --line_end=12 --side=RIGHT "
         "--file_name=src/app.py --comment_id=disc-1 why this change?"
     )
+
+@pytest.mark.asyncio
+async def test_gitlab_auto_commands_are_serialized(gitlab_webhook_module, monkeypatch):
+    settings = get_settings()
+    original_commands = settings.get("GITLAB.PR_COMMANDS", [])
+    settings.set("GITLAB.PR_COMMANDS", ["/plus_review"])
+    monkeypatch.setattr(gitlab_webhook_module, "apply_repo_settings", lambda url: None)
+    monkeypatch.setattr(gitlab_webhook_module, "should_process_pr_logic", lambda data: True)
+    monkeypatch.setattr(gitlab_webhook_module, "update_settings_from_args", lambda args: args)
+
+    running = 0
+    max_running = 0
+    calls = []
+
+    class FakeAgent:
+        async def handle_request(self, api_url, command):
+            nonlocal running, max_running
+            running += 1
+            max_running = max(max_running, running)
+            calls.append(("start", api_url, command))
+            await asyncio.sleep(0.01)
+            calls.append(("end", api_url, command))
+            running -= 1
+
+    try:
+        await asyncio.gather(
+            gitlab_webhook_module._perform_commands_gitlab(
+                "pr_commands", FakeAgent(), "https://gitlab.example/mr/1", {}, _gitlab_payload()
+            ),
+            gitlab_webhook_module._perform_commands_gitlab(
+                "pr_commands", FakeAgent(), "https://gitlab.example/mr/2", {}, _gitlab_payload()
+            ),
+        )
+    finally:
+        settings.set("GITLAB.PR_COMMANDS", original_commands)
+
+    assert max_running == 1
+    assert calls == [
+        ("start", "https://gitlab.example/mr/1", "/plus_review"),
+        ("end", "https://gitlab.example/mr/1", "/plus_review"),
+        ("start", "https://gitlab.example/mr/2", "/plus_review"),
+        ("end", "https://gitlab.example/mr/2", "/plus_review"),
+    ]

@@ -55,6 +55,7 @@ CONFIG__MODEL=gpt-4.1
 CONFIG__RESPONSE_LANGUAGE=zh-CN
 CONFIG__PUBLISH_OUTPUT=true
 CONFIG__PUBLISH_OUTPUT_PROGRESS=false
+GUNICORN_WORKERS=1
 
 GITLAB__URL=替换成你的 GitLab 地址
 GITLAB__PERSONAL_ACCESS_TOKEN=替换成你的 GitLab PAT
@@ -164,6 +165,7 @@ WorkingDirectory=/opt/PR-Agent
 EnvironmentFile=/opt/PR-Agent/.env
 Environment=PYTHONPATH=/opt/PR-Agent
 Environment=PORT=3000
+Environment=GUNICORN_WORKERS=1
 ExecStart=/opt/PR-Agent/.venv/bin/python -m pr_agent.servers.gitlab_webhook
 Restart=always
 RestartSec=5
@@ -183,6 +185,14 @@ sudo systemctl status pr-agent-gitlab
 ```bash
 journalctl -u pr-agent-gitlab -f
 ```
+
+## 并发规则
+
+这个方案已经配置成一次只执行一个自动 `plus_review`。
+
+多个 MR 同时到来时，后到的会等待前一个跑完。
+
+不要把 `GUNICORN_WORKERS` 改大，否则多个进程会绕开单进程队列。
 
 ## 第 8 步：GitLab 配 Webhook
 

@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import json
 import os
@@ -25,6 +26,7 @@ setup_logger(fmt=LoggingFormat.JSON, level=get_settings().get("CONFIG.LOG_LEVEL"
 router = APIRouter()
 
 secret_provider = get_secret_provider() if get_settings().get("CONFIG.SECRET_PROVIDER") else None
+_gitlab_auto_command_lock = asyncio.Lock()
 
 
 async def handle_request(api_url: str, body: str, log_context: dict, sender_id: str, notify=None):
@@ -46,18 +48,20 @@ async def _perform_commands_gitlab(commands_conf: str, agent: PRAgent, api_url: 
         return
     commands = get_settings().get(f"gitlab.{commands_conf}", {})
     get_settings().set("config.is_auto_command", True)
-    for command in commands:
-        try:
-            split_command = command.split(" ")
-            command = split_command[0]
-            args = split_command[1:]
-            other_args = update_settings_from_args(args)
-            new_command = ' '.join([command] + other_args)
-            get_logger().info(f"Performing command: {new_command}")
-            with get_logger().contextualize(**log_context):
-                await agent.handle_request(api_url, new_command)
-        except Exception as e:
-            get_logger().error(f"Failed to perform command {command}: {e}")
+    async with _gitlab_auto_command_lock:
+        get_logger().info(f"GitLab auto command queue acquired for {api_url=}", **log_context)
+        for command in commands:
+            try:
+                split_command = command.split(" ")
+                command = split_command[0]
+                args = split_command[1:]
+                other_args = update_settings_from_args(args)
+                new_command = ' '.join([command] + other_args)
+                get_logger().info(f"Performing command: {new_command}")
+                with get_logger().contextualize(**log_context):
+                    await agent.handle_request(api_url, new_command)
+            except Exception as e:
+                get_logger().error(f"Failed to perform command {command}: {e}")
 
 
 def is_bot_user(data) -> bool:

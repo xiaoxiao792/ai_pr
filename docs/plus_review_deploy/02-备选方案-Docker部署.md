@@ -80,6 +80,7 @@ CONFIG__MODEL=gpt-4.1
 CONFIG__RESPONSE_LANGUAGE=zh-CN
 CONFIG__PUBLISH_OUTPUT=true
 CONFIG__PUBLISH_OUTPUT_PROGRESS=false
+GUNICORN_WORKERS=1
 
 GITLAB__URL=替换成你的 GitLab 地址
 GITLAB__PERSONAL_ACCESS_TOKEN=替换成你的 GitLab PAT
@@ -119,6 +120,14 @@ curl http://127.0.0.1:3000/
 ```bash
 sudo docker logs -f ai-pr-agent
 ```
+
+## 并发规则
+
+这个方案已经配置成一次只执行一个自动 `plus_review`。
+
+多个 MR 同时到来时，后到的会等待前一个跑完。
+
+不要把 `GUNICORN_WORKERS` 改大，否则多个进程会绕开单进程队列。
 
 ## 第 7 步：GitLab 配 Webhook
 
