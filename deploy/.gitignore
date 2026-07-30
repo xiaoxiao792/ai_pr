@@ -1,0 +1,7 @@
+# 离线构建产物（体积大，不纳入版本管理）
+offline_bundle/
+offline_bundle.tar.gz
+offline_wheels/
+
+# 运行时生成的密钥文件（由 deploy.sh 从 env.conf 自动生成）
+.secrets.toml

@@ -1,0 +1,30 @@
+# ============================================================
+# PR-Agent GitLab Webhook — Docker Compose 编排
+# ============================================================
+# 此文件中的 ${VAR} 占位符由 deploy.sh 通过 env.conf 注入
+# 不要手动修改此文件,所有配置请在 env.conf 中修改
+# ============================================================
+
+version: "3.8"
+
+services:
+  pr-agent-gitlab:
+    image: pr-agent-gitlab:offline
+    container_name: ${CONTAINER_NAME:-pr-agent-gitlab}
+    ports:
+      - "${SERVICE_PORT:-3000}:3000"
+    volumes:
+      # 挂载 deploy.sh 生成的 .secrets.toml 到容器内
+      - ./.secrets.toml:/app/pr_agent/settings/.secrets.toml:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
