@@ -206,6 +206,11 @@ auto_extract() {
                 cp "$ORIG_DIR/env.conf" "$SCRIPT_DIR/env.conf"
                 log_info "已从 $ORIG_DIR/env.conf 同步用户配置到 bundle"
             fi
+            # 同步用户编辑过的 docker-compose.yml
+            if [ -f "$ORIG_DIR/docker-compose.yml" ]; then
+                cp "$ORIG_DIR/docker-compose.yml" "$SCRIPT_DIR/docker-compose.yml"
+                log_info "已从 $ORIG_DIR/docker-compose.yml 同步编排文件到 bundle"
+            fi
             ENV_FILE="$SCRIPT_DIR/env.conf"
         fi
     elif [ -d "$BUNDLE_DIR" ]; then

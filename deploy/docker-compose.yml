@@ -11,6 +11,8 @@ services:
   pr-agent-gitlab:
     image: pr-agent-gitlab:offline
     container_name: ${CONTAINER_NAME:-pr-agent-gitlab}
+    environment:
+      - GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT:-240}
     ports:
       - "${SERVICE_PORT:-3000}:3000"
     volumes:
